@@ -1,7 +1,11 @@
+const path = require('path');
+
 module.exports = {
-  "transpileDependencies": [
-    "vuetify"
+  'transpileDependencies': [
+    'vuetify'
   ],
 
-  publicPath: '/hanabi-tracker/'
+  publicPath: '/hanabi-tracker/',
+
+  outputDir: path.resolve(__dirname, './docs')
 }
