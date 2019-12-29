@@ -16,11 +16,13 @@
           class="tile-list d-flex mx-n3"
         >
           <v-col
-            class="tile-item drag-item"
+            class="tile-item"
             v-for="(tile, i) in tiles"
             :key="tile.key"
-            :cols="12 / tiles.length"
-            :style="{ left: `${i * 100 / tiles.length}%` }"
+            :style="{
+              left: `${i * 100 / tiles.length}%`,
+              width: `${100 / tileCount}%`
+            }"
             @click="tile.selected = !tile.selected"
           >
             <Tile :tile="tile"/>
@@ -176,12 +178,12 @@ export default {
   },
 
   mounted () {
-    let vh = window.innerHeight * 0.01
-    document.documentElement.style.setProperty('--vh', `${vh}px`)
-    window.addEventListener('resize', () => {
-      let vh = window.innerHeight * 0.01
-      document.documentElement.style.setProperty('--vh', `${vh}px`)
-    });
+    // let vh = window.innerHeight * 0.01
+    // document.documentElement.style.setProperty('--vh', `${vh}px`)
+    // window.addEventListener('resize', () => {
+    //   let vh = window.innerHeight * 0.01
+    //   document.documentElement.style.setProperty('--vh', `${vh}px`)
+    // });
   },
 
   watch: {
@@ -273,10 +275,10 @@ export default {
 </script>
 
 <style lang="scss">
-  .tracker {
-    height: 100vh;
-    height: calc(var(--vh, 1vh) * 100);
-  }
+  // .tracker {
+  //   height: 100vh;
+  //   height: calc(var(--vh, 1vh) * 100);
+  // }
   .tile-item {
     transition: all 1s;
     position: absolute;
@@ -288,9 +290,6 @@ export default {
   .tile-list-leave-to {
     transform: translateY(-130%);
     opacity: 0;
-  }
-  .tile-list-leave-active {
-    position: absolute;
   }
 </style>
 
