@@ -1,34 +1,60 @@
 <template>
   <div class="tracker">
 
-    <v-btn color="grey" class="mr-n3 mt-1" @click="dialog = true" absolute right text fab small dark>
+    <!-- <v-container>
+      <v-btn color="grey" class="mr-n3 mt-1" @click="dialog = true" float right text fab small>
+        <v-icon>mdi-settings</v-icon>
+      </v-btn>
+      <v-btn color="grey" class="mr-n3 mt-1" @click="dialog = true" float right text fab small>
+        <v-icon>mdi-settings</v-icon>
+      </v-btn>
+    </v-container> -->
+
+    <v-row class="mt-1 mr-1 ml-1">
+      <v-btn color="grey" @click="resetTiles" text fab small>
+        <v-icon>mdi-refresh</v-icon>
+      </v-btn>
+      <v-spacer></v-spacer>
+      <v-btn :disabled="stackIndex === 0" color="grey" @click="undo" text fab small>
+        <v-icon>mdi-undo</v-icon>
+      </v-btn>
+      <v-btn :disabled="stackIndex === stackMax" color="grey" @click="redo" text fab small>
+        <v-icon>mdi-redo</v-icon>
+      </v-btn>
+      <v-btn color="grey" @click="dialog = true" text fab small>
+        <v-icon>mdi-settings</v-icon>
+      </v-btn>
+    </v-row>
+    <!-- <v-btn color="grey" class="mr-n3 mt-1" @click="dialog = true" absolute right text fab small dark>
       <v-icon>mdi-settings</v-icon>
-    </v-btn>
+    </v-btn> -->
     
-    <v-container class="pt-8 tile-container">
-      <!-- <draggable
+    <v-container class="mt-n4 tile-container" :class="{dragging: dragging}">
+      <draggable
         v-model="tiles"
-        class="tile-container pt-8 v-tabs__container"
-        :delay="50"
-      > -->
+        class="v-tabs__container"
+        :delay="10"
+        @start="draggingStart"
+        @end="draggingEnd"
+      >
         <transition-group
           name="tile-list"
           class="tile-list d-flex mx-n3"
         >
           <v-col
             class="tile-item"
+            :style="{
+              width: `${100 / tileCount}%`,
+              left: `${i * 100 / tileCount}%`
+            }"
             v-for="(tile, i) in tiles"
             :key="tile.key"
-            :style="{
-              left: `${i * 100 / tiles.length}%`,
-              width: `${100 / tileCount}%`
-            }"
             @click="tile.selected = !tile.selected"
           >
             <Tile :tile="tile"/>
           </v-col>
         </transition-group>
-      <!-- </draggable> -->
+      </draggable>
     </v-container>
 
     <v-bottom-sheet
@@ -84,7 +110,6 @@
         <v-row>
           <v-col
             v-if="selectedTiles.length === 1"
-            cols="6"
           >
             <v-btn
               outlined
@@ -94,9 +119,11 @@
               @click="playDiscard"
             >Play / Discard</v-btn>
           </v-col>
-          <v-col
-            :cols="selectedTiles.length === 1 ? 6 : 12"
+          <!-- <v-col
           >
+            <v-btn outlined width="100%" color="red" small @click="cancelSelection">Cancel</v-btn>
+          </v-col> -->
+          <v-col>
             <v-btn outlined width="100%" color="red" small @click="cancelSelection">Cancel</v-btn>
           </v-col>
         </v-row>
@@ -150,9 +177,9 @@
 
 <script>
 import { mapState } from 'vuex'
-import { range } from 'lodash'
+import { range, cloneDeep } from 'lodash'
 import Tile from './Tile'
-// import draggable from 'vuedraggable'
+import draggable from 'vuedraggable'
 
 export default {
   data () {
@@ -164,9 +191,11 @@ export default {
         { label: 'Replace', code: 'replace' },
       ],
       convention: { label: 'Shift Right', code: 'shift-right' },
-      playersItems: range(2, 7),
+      playersItems: range(2, 6),
       players: 4,
       tiles: [],
+      stack: [],
+      stackIndex: null,
       tileKey: 1,
       color: null,
       number: null
@@ -187,7 +216,10 @@ export default {
   },
 
   watch: {
-    tileCount: 'resetTiles'
+    tileCount () {
+      this.stack = []
+      this.resetTiles()
+    },
   },
 
   computed: {
@@ -199,7 +231,19 @@ export default {
       return this.tiles.filter(tile => tile.selected)
     },
 
-    ...mapState(['colors', 'numbers'])
+    dragging () {
+      return this.tiles.some(tile => tile.dragging)
+    },
+
+    stackCurrent () {
+      return this.stack[this.stackIndex]
+    },
+
+    stackMax () {
+      return this.stack.length - 1
+    },
+
+    ...mapState(['colors', 'colorMulticolor', 'numbers'])
   },
 
   methods: {
@@ -209,14 +253,18 @@ export default {
         .filter(tile => !tile.number && !this.selectedTiles.includes(tile) && !tile.notNumbers.includes(this.number))
         .forEach(tile => tile.notNumbers.push(this.number))
       this.resetSelection()
+      this.pushStack()
     },
 
     setColor () {
-      this.selectedTiles.forEach(tile => tile.color = this.color)
+      this.selectedTiles.forEach(tile => {
+        tile.color = tile.color && tile.color !== this.color ? this.colorMulticolor : this.color
+      })
       this.tiles
         .filter(tile => !tile.color && !this.selectedTiles.includes(tile) && !tile.notColors.includes(this.color))
         .forEach(tile => tile.notColors.push(this.color))
       this.resetSelection()
+      this.pushStack()
     },
 
     resetSelection () {
@@ -229,6 +277,8 @@ export default {
 
     resetTiles () {
       this.tiles = [...Array(this.tileCount)].map(this.getNextTile)
+      this.stack = []
+      this.pushStack()
     },
 
     getNextTile () {
@@ -238,7 +288,8 @@ export default {
         number: null,
         color: null,
         notNumbers: [],
-        notColors: []
+        notColors: [],
+        dragging: false
       }
     },
 
@@ -255,21 +306,47 @@ export default {
         switch (this.convention.code) {
           case 'shift-right':
             this.tiles.unshift(this.getNextTile())
-            break;
+            break
           case 'shift-left':
             this.tiles.push(this.getNextTile())
-            break;
+            break
           case 'replace':
             this.tiles.splice(index, 0, this.getNextTile())
-            break;
+            break
         }
+        this.pushStack()
       }, 0)
+    },
+    draggingStart (event) {
+      this.tiles[event.oldIndex].dragging = true
+    },
+    draggingEnd (event) {
+      setTimeout(() => {
+        this.tiles[event.newIndex].dragging = false
+      }, 0)
+      if (event.oldIndex !== event.newIndex) this.pushStack()
+    },
+    reStack () {
+      this.stack.splice(this.stackIndex + 1)
+    },
+    pushStack () {
+      if (this.stackIndex !== this.stackMax) this.reStack()
+      this.stack.push(cloneDeep(this.tiles))
+      this.stackIndex = this.stackMax
+    },
+    undo () {
+      this.stackIndex -= 1
+      this.tiles = cloneDeep(this.stackCurrent)
+    },
+    redo () {
+      this.stackIndex += 1
+      this.tiles = cloneDeep(this.stackCurrent)
     }
   },
 
   components: {
     Tile,
-    // draggable
+    draggable
   }
 }
 </script>
@@ -279,17 +356,21 @@ export default {
   //   height: 100vh;
   //   height: calc(var(--vh, 1vh) * 100);
   // }
-  .tile-item {
-    transition: all 1s;
-    position: absolute;
-  }
-  .tile-list-enter {
-    opacity: 0;
-    transform: translateY(50%);
-  }
-  .tile-list-leave-to {
-    transform: translateY(-130%);
-    opacity: 0;
+  .tile-container {
+    &:not(.dragging) {
+      .tile-item {
+        transition: all 1s;
+        position: absolute;
+      }
+      .tile-list-enter {
+        opacity: 0;
+        transform: translateY(50%);
+      }
+      .tile-list-leave-to {
+        transform: translateY(-130%);
+        opacity: 0;
+      }
+    }
   }
 </style>
 

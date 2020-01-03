@@ -5,7 +5,9 @@ module.exports = {
     'vuetify'
   ],
 
-  publicPath: '/hanabi-tracker/',
+  publicPath: process.env.NODE_ENV === 'production'
+    ? '/hanabi-tracker/'
+    : '/',
 
   outputDir: path.resolve(__dirname, './docs')
 }

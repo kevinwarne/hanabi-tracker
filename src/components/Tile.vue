@@ -60,7 +60,8 @@ export default {
   computed: {
     classes () {
       return {
-        selected: this.tile.selected
+        selected: this.tile.selected,
+        dragging: this.tile.dragging
       }
     },
     
@@ -117,10 +118,10 @@ export default {
 
     &.selected {
       border: 4px solid #111;
+    }
 
-      // .tile-main {
-      //   border-style: solid !important;
-      // }
+    &.dragging {
+      border: 4px solid #aaa;
     }
 
   }
