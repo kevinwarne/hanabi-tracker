@@ -33,7 +33,7 @@
       <draggable
         v-model="tiles"
         class="v-tabs__container"
-        :delay="25"
+        :delay="50"
         @start="draggingStart"
         @end="draggingEnd"
       >
